@@ -81,7 +81,7 @@ class SkipFilter(DataFilter):
                     if len(row) != 77:
                         continue  # Skip rows with incorrect number of columns
 
-                    location, child_weight, child_height, *risk_factors = row
+                    location, child_weight, child_height, *_ = row
 
                     # Split values by the specified delimiters and remove leading/trailing spaces
                     child_weight_parts = [part.strip() for part in

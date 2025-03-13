@@ -1,3 +1,18 @@
+"""
+Module for adding geographic coordinates to CSV data based on location addresses.
+
+This module reads location data from a CSV file, fetches latitude and longitude coordinates
+for each location using the Yandex Geocoding API, and writes the enriched data into a new CSV file.
+
+Classes:
+    :GeoCoordinatesAdder: Handles fetching coordinates and writing the updated data.
+
+Dependencies:
+    :csv: for reading and writing CSV files.
+    :requests: For making API calls to Yandex Geocoding.
+    :CsvReader: Utility class for reading CSV data.
+"""
+
 import csv
 import requests
 from src.utils.data_reader import CsvReader
@@ -9,14 +24,15 @@ class GeoCoordinatesAdder:
     based on the location addresses provided in the first column of the CSV file.
 
     The class will use the Yandex Geocoding API to obtain coordinates for the addresses.
-
-    Attributes:
-        api_key (str): API key for Yandex Geocoding API.
-        input_filepath (str): Path to the CSV file containing the data.
-        output_filepath (str): Path to the output CSV file where the data with coordinates will be saved.
     """
 
     def __init__(self, api_key: str, input_filepath: str, output_filepath: str):
+        """
+        :param api_key: API key for Yandex Geocoding API.
+        :param input_filepath: Path to the CSV file containing the data.
+        :param output_filepath: Path to the output CSV file where the data
+                                with coordinates will be saved.
+        """
         self.api_key = api_key
         self.input_filepath = input_filepath
         self.output_filepath = output_filepath
@@ -28,7 +44,7 @@ class GeoCoordinatesAdder:
         :param address: The address of the location.
         :return: tuple of (latitude, longitude) if successful, otherwise (None, None).
         """
-        url = f"https://geocode-maps.yandex.ru/1.x/"
+        url = "https://geocode-maps.yandex.ru/1.x/"
         params = {
             "geocode": address,
             "format": "json",
@@ -36,7 +52,7 @@ class GeoCoordinatesAdder:
         }
 
         try:
-            response = requests.get(url, params=params)
+            response = requests.get(url, params=params, timeout=10)
             response.raise_for_status()  # Raise an exception for bad status codes
             data = response.json()
 
@@ -49,8 +65,7 @@ class GeoCoordinatesAdder:
                         "pos"]
                 latitude, longitude = coordinates.split()
                 return float(latitude), float(longitude)
-            else:
-                return None, None
+            return None, None
         except requests.RequestException as e:
             print(f"Error fetching coordinates for {address}: {e}")
             return None, None

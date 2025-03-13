@@ -21,9 +21,9 @@ from src.geo_coordinates.geo_coordinates import GeoCoordinatesAdder
 
 
 if __name__ == '__main__':
-    api_key = 'your_yandex_api_key'  # Replace with your API Yandex key
+    API_KEY = 'your_yandex_api_key'  # Replace with your API Yandex key
     input_filepath = os.path.abspath("data/filtered_data.csv")
     output_filepath = os.path.abspath("data/output_with_coordinates.csv")
 
-    geo_adder = GeoCoordinatesAdder(api_key, input_filepath, output_filepath)
+    geo_adder = GeoCoordinatesAdder(API_KEY, input_filepath, output_filepath)
     geo_adder.add_coordinates_and_save()
