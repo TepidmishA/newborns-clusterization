@@ -2,14 +2,17 @@
 Module for adding geographic coordinates to CSV data based on location addresses.
 
 This module reads location data from a CSV file, fetches latitude and longitude coordinates
-for each location using the Yandex Geocoding API, and writes the enriched data into a new CSV file.
+for each location using either the Yandex Geocoding API or the Nominatim API (OpenStreetMap),
+and writes the enriched data into a new CSV file.
 
 Classes:
-    :GeoCoordinatesAdder: Handles fetching coordinates and writing the updated data.
+    :CoordinatesAdder: Abstract base class for handling coordinate fetching and CSV processing.
+    :YandexMap: Handles fetching coordinates using the Yandex Geocoding API.
+    :NominatimOSM: Handles fetching coordinates using the Nominatim API (OpenStreetMap).
 
 Dependencies:
-    :csv: for reading and writing CSV files.
-    :requests: For making API calls to Yandex Geocoding.
+    :csv: For reading and writing CSV files.
+    :requests: For making API calls to geocoding services.
     :CsvReader: Utility class for reading CSV data.
 """
 
