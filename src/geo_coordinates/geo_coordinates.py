@@ -14,11 +14,58 @@ Dependencies:
 """
 
 import csv
+from abc import ABC, abstractmethod
 import requests
 from src.utils.data_reader import CsvReader
 
 
-class GeoCoordinatesAdder:
+class CoordinatesAdder(ABC):
+    """
+    Abstract base class for adding coordinates to .csv file.
+    """
+
+    def __init__(self, input_filepath: str, output_filepath: str):
+        """
+        :param input_filepath: Path to the CSV file containing the data.
+        :param output_filepath: Path to the output CSV file where the data
+                                with coordinates will be saved.
+        """
+        self.input_filepath = input_filepath
+        self.output_filepath = output_filepath
+
+    @abstractmethod
+    def get_coordinates(self, address: str) -> (float, float):
+        """
+        Gets latitude and longitude from Yandex Geocoding API based on the address.
+
+        :param address: The address of the location.
+        :return: tuple of (latitude, longitude) if successful, otherwise (None, None).
+        """
+
+    def add_coordinates_and_save(self):
+        """
+        Reads the data from the CSV file, adds coordinates to each location,
+        and writes the data with coordinates to a new CSV file.
+
+        :return: None
+        """
+        csv_reader = CsvReader(self.input_filepath)
+        data = csv_reader.read()  # Get data from the CSV file
+
+        # Open the output file for writing
+        with open(self.output_filepath, mode='w', newline='', encoding='ANSI') as output_file:
+            writer = csv.writer(output_file, delimiter=';')
+
+            for row in data:
+                location = row[0]  # First column contains the location address
+                latitude, longitude = self.get_coordinates(location)
+
+                # Add coordinates to the beginning of the row
+                new_row = [latitude, longitude] + row
+                writer.writerow(new_row)
+
+
+class YandexMap(CoordinatesAdder):
     """
     A utility class for adding coordinates (latitude and longitude) to the data from a CSV file
     based on the location addresses provided in the first column of the CSV file.
@@ -33,11 +80,10 @@ class GeoCoordinatesAdder:
         :param output_filepath: Path to the output CSV file where the data
                                 with coordinates will be saved.
         """
+        super().__init__(input_filepath, output_filepath)
         self.api_key = api_key
-        self.input_filepath = input_filepath
-        self.output_filepath = output_filepath
 
-    def get_coordinates(self, address: str):
+    def get_coordinates(self, address: str) -> (float, float):
         """
         Gets latitude and longitude from Yandex Geocoding API based on the address.
 
@@ -70,24 +116,53 @@ class GeoCoordinatesAdder:
             print(f"Error fetching coordinates for {address}: {e}")
             return None, None
 
-    def add_coordinates_and_save(self):
+
+class NominatimOSM(CoordinatesAdder):
+    """
+    A utility class for adding coordinates (latitude and longitude) to the data from a CSV file
+    based on the location addresses provided in the first column of the CSV file.
+
+    The class will use the Nominatim API (OpenStreetMap) to obtain coordinates for the addresses.
+    """
+
+    def __init__(self, input_filepath: str, output_filepath: str):
         """
-        Reads the data from the CSV file, adds coordinates to each location,
-        and writes the data with coordinates to a new CSV file.
-
-        :return: None
+        :param input_filepath: Path to the CSV file containing the data.
+        :param output_filepath: Path to the output CSV file where the data
+                                with coordinates will be saved.
         """
-        csv_reader = CsvReader(self.input_filepath)
-        data = csv_reader.read()  # Get data from the CSV file
+        super().__init__(input_filepath, output_filepath)
+        self.cache = {}  # Cache to store already fetched coordinates
 
-        # Open the output file for writing
-        with open(self.output_filepath, mode='w', newline='', encoding='ANSI') as output_file:
-            writer = csv.writer(output_file, delimiter=';')
+    def get_coordinates(self, address: str) -> (float, float):
+        """
+        Gets latitude and longitude from Nominatim API based on the address.
 
-            for row in data:
-                location = row[0]  # First column contains the location address
-                latitude, longitude = self.get_coordinates(location)
+        :param address: The address of the location.
+        :return: tuple of (latitude, longitude) if successful, otherwise (None, None).
+        """
+        if address in self.cache:
+            return self.cache[address]
 
-                # Add coordinates to the beginning of the row
-                new_row = [latitude, longitude] + row
-                writer.writerow(new_row)
+        url = "https://nominatim.openstreetmap.org/search"
+        params = {
+            "q": address,
+            "format": "json",
+            "limit": 1
+        }
+
+        try:
+            response = requests.get(url, params=params,
+                                    headers={"User-Agent": "geo-coordinates-adder"}, timeout=10)
+            response.raise_for_status()  # Raise an exception for bad status codes
+            data = response.json()
+
+            if data:
+                latitude = float(data[0]["lat"])
+                longitude = float(data[0]["lon"])
+                self.cache[address] = (latitude, longitude)
+                return latitude, longitude
+            return None, None
+        except requests.RequestException as e:
+            print(f"Error fetching coordinates for {address}: {e}")
+            return None, None
