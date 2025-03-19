@@ -23,11 +23,15 @@ class DataFilter(ABC):
     Abstract base class for data filter implementations.
     """
 
-    def __init__(self, filepath: str):
+    def __init__(self, input_filepath: str, output_filepath: str):
         """
-        :param filepath: Path to data source file.
+        :param input_filepath: Path to data source file.
+        :param output_filepath: Path to the output CSV file where filtered data
+                                will be saved.
         """
-        self.file_path = filepath
+        self.input_filepath = input_filepath
+        self.output_filepath = output_filepath
+        self.debug = False
 
     @abstractmethod
     def filter(self):
@@ -39,7 +43,7 @@ class SkipFilter(DataFilter):
     A utility class for reading and filtering incorrect data from a CSV file.
 
     The CSV file should have the following format:
-        location, child_weight, child_height, [list of risk factors]
+        hospital_num, history_num, location, child_weight, child_height, [list of risk factors]
 
     - `location` (str): The geographical location where the data was collected.
     - `child_weight` (int): The weight of the child in kilograms.
@@ -56,10 +60,11 @@ class SkipFilter(DataFilter):
     - The `child_weight` and `child_height` values must not be empty.
     - The `location` field must not be empty.
     """
+
     def filter(self):
         """
         Reads the CSV file, filters rows based on specific conditions,
-        and writes the filtered data into a new CSV file (filtered_data.csv).
+        and writes the filtered data into a new CSV file.
 
         :return: None
         :raises FileNotFoundError, ValueError, csv.Error, OSError: if any error occurs during
@@ -67,8 +72,9 @@ class SkipFilter(DataFilter):
         """
         try:
             # Open the input file for reading and the output file for writing
-            with open(self.file_path, mode='r', encoding='ANSI') as input_file, \
-                    open('filtered_data.csv', mode='w', newline='', encoding='ANSI') as output_file:
+            with (open(self.input_filepath, mode='r', encoding='ANSI') as input_file, \
+                  open(self.output_filepath, mode='w', newline='', encoding='ANSI')
+                  as output_file):
 
                 reader = csv.reader(input_file, delimiter=';')
                 writer = csv.writer(output_file, delimiter=';')
@@ -78,10 +84,12 @@ class SkipFilter(DataFilter):
                 writer.writerow(header)
 
                 for row in reader:
-                    if len(row) != 77:
+                    if len(row) != 79:
+                        if self.debug:
+                            print(f"Not enough data in row: {row}")
                         continue  # Skip rows with incorrect number of columns
 
-                    location, child_weight, child_height, *_ = row
+                    _, _, location, child_weight, child_height, *_ = row
 
                     # Split values by the specified delimiters and remove leading/trailing spaces
                     child_weight_parts = [part.strip() for part in
@@ -95,6 +103,8 @@ class SkipFilter(DataFilter):
                             len(set(map(len, child_weight_parts))) != 1 or \
                             len(set(map(len, child_height_parts))) != 1 or \
                             len(child_weight_parts[0]) == 0 or len(str(location)) == 0:
+                        if self.debug:
+                            print(f"Invalid data in row: {row}")
                         continue  # Skip the row if conditions are not met
 
                     # Write the valid row to the output file
@@ -103,6 +113,6 @@ class SkipFilter(DataFilter):
         except FileNotFoundError:
             raise
         except (ValueError, csv.Error) as e:
-            raise ValueError(f"Data format error in {self.file_path}: {e}") from e
+            raise ValueError(f"Data format error in {self.input_filepath}: {e}") from e
         except OSError as e:
-            raise OSError(f"File system error accessing {self.file_path}: {e}") from e
+            raise OSError(f"File system error accessing {self.input_filepath}: {e}") from e

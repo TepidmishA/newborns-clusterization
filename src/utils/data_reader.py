@@ -40,7 +40,7 @@ class CsvReader(DataReader):
     A utility class for reading and parsing data from a CSV file.
 
     The CSV file should have the following format:
-        location, child_weight, child_height, [list of risk factors]
+        hospital_num, history_num, location, child_weight, child_height, [list of risk factors]
 
     - `location` (str): The geographical location where the data was collected.
     - `child_weight` (int): The weight of the child in kilograms.
@@ -54,7 +54,7 @@ class CsvReader(DataReader):
         :param filepath: Path to data source file.
         """
         super().__init__(filepath)
-        self.add_header = True      # Whether to include the header row in the output.
+        self.add_header = False      # Whether to include the header row in the output.
 
     def read(self):
         """
@@ -66,16 +66,16 @@ class CsvReader(DataReader):
         """
         parsed_data = []
         try:
-            with open(self.file_path, mode='r', encoding='ANSI') as file:
+            with (open(self.file_path, mode='r', encoding='ANSI') as file):
                 reader = csv.reader(file, delimiter=';')
                 if not self.add_header:
                     next(reader, [])  # Skip header
 
                 for row in reader:
-                    if len(row) != 77:
+                    if len(row) != 79:
                         raise ValueError(f"Incorrect line in the file {self.file_path}: {row}")
 
-                    location, child_weight, child_height, *risk_factors = row
+                    hospital_num, history_num, location, child_weight, child_height, *risk_factors = row
 
                     # Split by any of the specified delimiters
                     child_weight_parts = [part.strip() for part in
@@ -94,6 +94,8 @@ class CsvReader(DataReader):
                     # Process each pair of values
                     for i in range(len(child_height_parts)):
                         row_data = (
+                            int(hospital_num),
+                            int(history_num),
                             str(location),
                             int(child_weight_parts[i]),
                             int(child_height_parts[i]),
